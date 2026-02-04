@@ -30,7 +30,9 @@ headers = {
 class SoundCloudAuth:
     app_version: str
     client_id: str
-    oauth = config.settings.soundcloud_oauth
+    oauth: str = config.settings.soundcloud_oauth
+    # third section of the OAuth is the user ID
+    user_id: str = config.settings.soundcloud_oauth.split("-")[2]
 
 
 async def get_client_id(session: ClientSession) -> str:
