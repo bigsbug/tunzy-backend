@@ -6,7 +6,7 @@ import yt_dlp
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 ENV_PATH = BASE_DIR / ".env"
-
+DB_PATH = BASE_DIR / "sync_me.db"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     download_folder: str = str(BASE_DIR / "musics")
     file_template: str = "%(title)s.%(ext)s"
     download_retries: int = 4
+
+    db_url: str = f"sqlite:///{DB_PATH}"
 
     @property
     def log_file(self) -> str:
@@ -142,4 +144,20 @@ LOGGING: dict = {
             "file",
         ],
     },
+}
+
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/javascript,text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Referer": "https://www.google.com/",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "authorization": settings.soundcloud_oauth,
 }
