@@ -2,13 +2,15 @@ from app.core.logging import get_logger
 from app.soundcloud.auth import SoundCloudAuth
 from aiohttp import ClientSession
 import re
+from datetime import datetime
+from app.schemas.playlist import PlaylistSchema, TrackSchema
 
 logger = get_logger(__name__)
 
 
 async def get_playlists(
     session: ClientSession, sc_auth: SoundCloudAuth, limit: int = 100
-) -> list[dict]:
+) -> list[PlaylistSchema]:
     url = (
         "https://api-v2.soundcloud.com/me/library/all?"
         # "offset=2022-01-15T13%3A44%3A17.936Z"
@@ -20,8 +22,8 @@ async def get_playlists(
         "&app_locale=en"
     )
     logger.info("Requesting url %s", url)
-    playlists: list[dict] = []
-
+    playlists: list[PlaylistSchema] = []
+    checked = set()
     async with session.get(url) as req:
         content = await req.text()
         logger.info("User playlists api status %d length %d", req.status, len(content))
@@ -32,6 +34,7 @@ async def get_playlists(
             return []
         data: dict = await req.json()
         collections: list[dict] = data.get("collection", {})
+
         for collection in collections:
             collection: dict
             playlist: dict = collection.get(
@@ -39,14 +42,84 @@ async def get_playlists(
                 # fallback
                 collection.get("system_playlist", {}),
             )
-            playlists.append(playlist)
+            user = playlist.get("user", {}).get("full_name")
+            platform_id = str(playlist.get("id", -1))
+
+            # prevent duplicated from API
+            if platform_id in checked:
+                continue
+            checked.add(platform_id)
+            if playlist.get("artwork_url"):
+                obj = PlaylistSchema(
+                    platform_id=platform_id,
+                    duration=playlist.get("duration", 0),
+                    is_synced=False,
+                    last_modified=playlist.get("last_modified", datetime.now()),
+                    name=playlist.get("title", "Unknown"),
+                    owner=playlist.get("user", {}).get("full_name", None)
+                    or user
+                    or "Unknown",
+                    track_count=playlist.get("track_count", 0)
+                    or len(playlist.get("tracks", [])),
+                    url=playlist.get("permalink_url", ""),
+                    thumbnail=playlist.get("artwork_url"),
+                )
+                playlists.append(obj)
+            else:
+                obj = await get_playlist(platform_id, session, sc_auth)
+                playlists.append(obj)  # type: ignore
 
     logger.info("Extracted playlists total %d", len(playlists))
     return playlists
 
+
+async def get_playlist(
+    id: int | str, session: ClientSession, sc_auth: SoundCloudAuth
+) -> PlaylistSchema | None:
+    url = (
+        "https://api-v2.soundcloud.com/playlists/"
+        f"{id}"
+        "?representation=full"
+        f"&client_id={sc_auth.client_id}"
+        f"&app_version={sc_auth.app_version}"
+        "&app_locale=en"
+    )
+    logger.info("requesting playlist %s url %s", id, url)
+
+    async with session.get(url) as req:
+        content = await req.text()
+        logger.info("User playlist api status %d length %d", req.status, len(content))
+        if req.status != 200:
+            logger.error(
+                "Non-200 response from url %s content[2000]: %s", url, content[:2000]
+            )
+            return None
+        playlist: dict = await req.json()
+
+        user = playlist.get("user", {}).get("full_name")
+        tracks = playlist.get("tracks", [])
+        first_track_thumbnail = None
+        if tracks:
+            first_track_thumbnail = tracks[0].get("artwork_url")
+
+        obj = PlaylistSchema(
+            platform_id=str(playlist.get("id", -1)),
+            duration=playlist.get("duration", 0),
+            is_synced=False,
+            last_modified=playlist.get("last_modified", datetime.now()),
+            name=playlist.get("title", "Unknown"),
+            owner=playlist.get("user", {}).get("full_name", None) or user or "Unknown",
+            track_count=playlist.get("track_count", 0) or len(tracks),
+            url=playlist.get("permalink_url", ""),
+            thumbnail=playlist.get("artwork_url") or first_track_thumbnail,
+        )
+
+    return obj
+
+
 async def get_liked_tracks(
     session: ClientSession, sc_auth: SoundCloudAuth, limit: int = 1000
-) -> list[dict]:
+) -> list[TrackSchema]:
     url = (
         f"https://api-v2.soundcloud.com/users/{sc_auth.user_id}/track_likes?"
         # "offset=2025-07-11T12%3A59%3A13.428Z%2Cuser-track-likes%2C000-00000000000751401199-00000000002038114156"
@@ -116,7 +189,7 @@ async def get_playlist_tracks(
     session: ClientSession,
     sc_auth: SoundCloudAuth,
     batch_size_tracks_ids: int = 29,
-) -> list[dict]:
+) -> list[TrackSchema]:
 
     tracks_ids = await get_playlist_tracks_ids(playlist_uri, session)
     id_query_batch = []
@@ -147,8 +220,23 @@ async def get_playlist_tracks(
                     content[:2000],
                 )
                 return []
+
             tracks_data.extend(await req.json())
+
+    objects = []
+    for data in tracks_data:
+        obj = TrackSchema(
+            platform_id=str(data.get("id", 0)),
+            url=data.get("permalink_url"),
+            name=data.get("title", "Unknown"),
+            artist_name=data.get("user", {}).get("full_name"),
+            album=None,
+            duration=data.get("duration", 0),
+            is_synced=False,
+            thumbnail=data.get("artwork_url"),
+        )
+        objects.append(obj)
 
     logger.info("extracted tracks data total %d", len(tracks_data))
 
-    return tracks_data
+    return objects
