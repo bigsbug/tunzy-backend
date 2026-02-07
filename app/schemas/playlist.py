@@ -1,23 +1,24 @@
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
 class PlaylistSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    platform_id: str
     url: str
     name: str
     owner: str
-    track_counts: int
+    track_count: int
     duration: int
-    thumbnail: str
+    thumbnail: str | None
     is_synced: bool
-
+    last_modified: datetime
 
 class TrackSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    platform_id: str
     url: str | None
     name: str
     artist_name: str | None
