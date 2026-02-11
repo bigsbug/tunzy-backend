@@ -106,8 +106,8 @@ async def download_progress_reports(request: Request):
             if await request.is_disconnected():
                 break
             progresses = progress_reports.copy()
-            if last_report == progress_reports:
-                continue
+            # if last_report == progress_reports:
+            #     continue
 
             last_report = progresses
             data = json.dumps(jsonable_encoder(progresses))

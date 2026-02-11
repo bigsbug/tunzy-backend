@@ -33,8 +33,8 @@ class DownloadContext:
 
 class DownloadProgressReport(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    percent: int
-    status: DownloadStatusEnum
+    percent: int = 0
+    status: DownloadStatusEnum = DownloadStatusEnum.DOWNLOADING
 
 
 def error_logger(fn):
@@ -59,7 +59,7 @@ def download_hook(dtl, ctx: DownloadContext):
     percent = dtl.get("_percent", 0)
     current_report = progress_reports.get(
         download_id,
-        DownloadProgressReport(percent=0, status=DownloadStatusEnum.DOWNLOADING),
+        DownloadProgressReport(),
     )
     current_report.percent = max(current_report.percent, int(percent))
     current_report.status = YTDL_STATUS_MAP.get(
@@ -102,6 +102,7 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         else config.settings.concurrent_fragment_downloads
     )
 
+
     try:
         ydl_config = config.ydl_opts.copy()
         ydl_config["progress_hooks"] = [lambda d: download_hook(d, ctx)]
@@ -113,22 +114,29 @@ async def download(ctx: DownloadContext, orm: SessionDep):
             )
         )
         ctx.download_object.status = DownloadStatusEnum.SUCCESSFUL
+        orm.add(ctx.download_object)
         logger.info("Downloading Done %d", ctx.download_object.id)
 
     except asyncio.CancelledError:
         logger.info("Download %d Canceled", ctx.download_object.id)
-        download_progress_reports[ctx.download_object.id] = {
-            **download_progress_reports.get(ctx.download_object.id, {}),
-            "status": DownloadStatusEnum.FAILED,
-        }
         ctx.download_object.status = DownloadStatusEnum.FAILED
+        orm.add(ctx.download_object)
+
+        current_report = ctx.progress_reports.get(
+            ctx.download_object.id, DownloadProgressReport()
+        )
+        current_report.status = DownloadStatusEnum.FAILED
+        ctx.progress_reports[ctx.download_object.id] = current_report
 
     except Exception as err:
         logger.error("exception when downloading %s", err)
         ctx.download_object.status = DownloadStatusEnum.FAILED
-        download_progress_reports[ctx.download_object.id] = {
-            **download_progress_reports.get(ctx.download_object.id, {}),
-            "status": DownloadStatusEnum.FAILED,
-        }
+        orm.add(ctx.download_object)
+
+        current_report = ctx.progress_reports.get(
+            ctx.download_object.id, DownloadProgressReport()
+        )
+        current_report.status = DownloadStatusEnum.FAILED
+        ctx.progress_reports[ctx.download_object.id] = current_report
 
     orm.commit()
