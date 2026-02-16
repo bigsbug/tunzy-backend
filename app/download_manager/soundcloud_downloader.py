@@ -92,8 +92,6 @@ async def download(ctx: DownloadContext, orm: SessionDep):
     orm.add(ctx.download_object)
     orm.commit()
 
-    download_progress_reports = ctx.progress_reports
-
     setting_query = select(SettingsModel)
     setting = orm.exec(setting_query).one_or_none()
     concurrent_fragment_downloads = (
@@ -101,6 +99,7 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         if setting
         else config.settings.concurrent_fragment_downloads
     )
+    http_proxy = setting.http_proxy if setting else config.settings.http_proxy
 
 
     try:
@@ -108,6 +107,8 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         ydl_config["progress_hooks"] = [lambda d: download_hook(d, ctx)]
         ydl_config["logger"] = YtdlLogger()  # type: ignore
         ydl_config["concurrent_fragment_downloads"] = concurrent_fragment_downloads
+        ydl_config["proxy"] = http_proxy or None
+
         await asyncio.create_task(
             asyncio.to_thread(
                 sync_download_ytdl, [ctx.download_object.track.url or ""], ydl_config

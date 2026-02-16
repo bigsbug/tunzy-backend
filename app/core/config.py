@@ -51,6 +51,7 @@ ydl_opts: "yt_dlp._Params" = {
     # 'extractor_args': {'soundcloud': {'formats': 'hls'}},
     # For faster segmented downloads:
     "concurrent_fragment_downloads": settings.concurrent_fragment_downloads,
+    "proxy": settings.http_proxy,
 }
 
 # make dir of logs
