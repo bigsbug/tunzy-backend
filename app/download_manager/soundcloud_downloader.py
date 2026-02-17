@@ -86,7 +86,10 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         else config.settings.concurrent_fragment_downloads
     )
     http_proxy = setting.http_proxy if setting else config.settings.http_proxy
-
+    download_retries = (
+        setting.download_retries if setting else config.settings.download_retries
+    )
+    total_retry = 0
 
     try:
         ydl_config = config.ydl_opts.copy()
@@ -95,11 +98,23 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         ydl_config["concurrent_fragment_downloads"] = concurrent_fragment_downloads
         ydl_config["proxy"] = http_proxy or None
 
-        is_successful, exception = await asyncio.create_task(
-            asyncio.to_thread(
-                sync_download_ytdl, [ctx.download_object.track.url or ""], ydl_config
+        is_successful = True
+        exception = None
+        while total_retry < download_retries:
+            is_successful, exception = await asyncio.create_task(
+                asyncio.to_thread(
+                    sync_download_ytdl,
+                    [ctx.download_object.track.url or ""],
+                    ydl_config,
+                )
             )
-        )
+            if is_successful:
+                break
+            logger.info(
+                "Downloading Failed Retry %d/%d", total_retry + 1, download_retries
+            )
+            total_retry += 1
+
         if not is_successful:
             if exception:
                 raise Exception(
