@@ -1,5 +1,5 @@
 import aiohttp
-from fastapi import APIRouter, Path, HTTPException, status
+from fastapi import APIRouter, Path, HTTPException, Request, status
 from typing import Annotated
 from app.core import config
 from app.core.db import SessionDep
@@ -38,10 +38,12 @@ async def playlist(id: Annotated[int, Path(title="ID of playlist")], orm: Sessio
 
 
 @router.get("/{id:int}/tracks/", response_model=list[TrackPublicModel])
-async def tracks(id: Annotated[int, Path(title="ID of playlist")], orm: SessionDep):
+async def tracks(
+    id: Annotated[int, Path(title="ID of playlist")], orm: SessionDep, request: Request
+):
     tracks_statement = select(TrackModel).where(TrackModel.playlists.any(id=id))
     tracks = orm.exec(tracks_statement).fetchall()
-    return tracks
+    return [track.to_public_model(request) for track in tracks]
 
 
 @router.post("/sync/")
