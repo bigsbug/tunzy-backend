@@ -9,11 +9,13 @@ from fastapi.routing import APIRouter
 from sqlmodel import select
 from app.core.db import SessionDep
 from app.core.logging import get_logger
+from app.download_manager.manager import DownloadProgressReport
 from app.models.playlist import (
     DownloadTrackDataModel,
     DownloadTrackModel,
     DownloadTrackPublicModel,
     DownloadStatusEnum,
+    PlaylistModel,
 )
 from app.models.playlist import TrackModel
 from app.download_manager import soundcloud_downloader
@@ -97,8 +99,12 @@ async def download_track(track_id: int, orm: SessionDep, request: Request):
     return download_item
 
 @router.get("/progress-reports/")
-async def download_progress_reports(request: Request):
-    progress_reports = request.app.state.downloader.progress_reports
+async def download_progress_reports(
+    request: Request,
+):
+    progress_reports: dict[int, DownloadProgressReport] = (
+        request.app.state.downloader.progress_reports
+    )
 
     async def progress_generator():
         last_report = {}
@@ -111,6 +117,42 @@ async def download_progress_reports(request: Request):
 
             last_report = progresses
             data = json.dumps(jsonable_encoder(progresses))
+            yield f"data: {data}\n\n"
+            await sleep(0.5)
+
+    return StreamingResponse(progress_generator(), media_type="text/event-stream")
+
+
+@router.get("/progress-report/{playlist_id}/playlist")
+async def download_playlist_progress_report(
+    playlist_id: int, request: Request, orm: SessionDep
+):
+    progress_reports: dict[int, DownloadProgressReport] = (
+        request.app.state.downloader.progress_reports
+    )
+    playlist_qs = select(PlaylistModel).where(PlaylistModel.id == playlist_id)
+    playlist_obj = orm.exec(playlist_qs).one_or_none()
+    if not playlist_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist Not Found"
+        )
+    tracks_ids_lookup = set([obj.id for obj in playlist_obj.tracks])
+
+    async def progress_generator():
+        last_progress_reports = None
+        while True:
+            if await request.is_disconnected():
+                break
+            if last_progress_reports == progress_reports:
+                continue
+
+            last_progress_reports = progress_reports.copy()
+            playlist_progress = {
+                obj.track_id: obj
+                for obj in last_progress_reports.values()
+                if obj.track_id in tracks_ids_lookup
+            }
+            data = json.dumps(jsonable_encoder(playlist_progress))
             yield f"data: {data}\n\n"
             await sleep(0.5)
 
