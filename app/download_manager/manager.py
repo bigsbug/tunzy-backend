@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 class DownloadContext:
     progress_reports: dict
     cancel_event: threading.Event
+    progress_event: asyncio.Event
     download_object: DownloadTrackModel
     file_path: str | None = None
 
@@ -56,6 +57,7 @@ class DownloadManager:
         self.queue = Queue()
         self.tasks: dict[int, tuple[asyncio.Task, threading.Event]] = {}
         self.progress_reports: dict[int, DownloadProgressReport] = {}
+        self.progress_event = asyncio.Event()
 
     async def worker(self):
         while True:

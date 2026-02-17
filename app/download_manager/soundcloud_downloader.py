@@ -54,10 +54,9 @@ def download_hook(dtl, ctx: DownloadContext):
         ctx.file_path = dtl.get("filename")
         logger.info("File Path: %s", ctx.file_path)
 
-    # percent_str = dtl.get("_percent_str", "??%")  # already formatted
-    # pprint(dtl)
+    ctx.progress_event.set()
     logger.info(f"*** Progress: {current_report.percent} {current_report.status}")
-    # logger.info(dtl)
+
 
 
 class YtdlLogger:
