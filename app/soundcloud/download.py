@@ -1,3 +1,4 @@
+
 from app.core.logging import get_logger
 from app.core import config
 import asyncio
@@ -6,9 +7,14 @@ import yt_dlp
 logger = get_logger(__name__)
 
 
-def sync_download_ytdl(links: list[str], config):
+def sync_download_ytdl(links: list[str], config) -> tuple[bool, Exception | None]:
     with yt_dlp.YoutubeDL(config) as ydl:
-        ydl.download(links)
+        try:
+            ydl.download(links)
+        except Exception as err:
+            logger.error("Error While Downloading %s File Via ydl", links)
+            return False, err
+    return True, None
 
 
 async def download_tracks(
@@ -32,7 +38,9 @@ async def download_tracks(
     tasks = []
     for i, _bucket in enumerate(download_buckets):
         logger.debug("Bucket %d data: %s", i, _bucket)
-        task = asyncio.create_task(asyncio.to_thread(sync_download_ytdl, _bucket))
+        task = asyncio.create_task(
+            asyncio.to_thread(sync_download_ytdl, _bucket, config.ydl_opts)
+        )
 
         tasks.append(task)
     await asyncio.gather(*tasks)
