@@ -38,6 +38,7 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://127.0.0.1",
+    "host.docker.internal",
 ]
 
 app.include_router(prefix="/api", router=playlist_router)
@@ -48,7 +49,7 @@ app.include_router(router=frontend_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins="*",
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
