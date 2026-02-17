@@ -39,10 +39,10 @@ origins = [
     "http://127.0.0.1",
 ]
 
-app.include_router(playlist_router)
-app.include_router(settings_router)
-app.include_router(downloads_router)
-app.include_router(player_router)
+app.include_router(prefix="/api", router=playlist_router)
+app.include_router(prefix="/api", router=settings_router)
+app.include_router(prefix="/api", router=downloads_router)
+app.include_router(prefix="/api", router=player_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
