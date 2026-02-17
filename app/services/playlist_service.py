@@ -41,7 +41,7 @@ async def playlist(id: Annotated[int, Path(title="ID of playlist")], orm: Sessio
 async def tracks(
     id: Annotated[int, Path(title="ID of playlist")], orm: SessionDep, request: Request
 ):
-    tracks_statement = select(TrackModel).where(TrackModel.playlists.any(id=id))
+    tracks_statement = select(TrackModel).where(TrackModel.playlists.any(id=id))  # type: ignore
     tracks = orm.exec(tracks_statement).fetchall()
     return [track.to_public_model(request) for track in tracks]
 
@@ -67,7 +67,7 @@ async def sync_playlists(orm: SessionDep):
     search_query = (
         select(PlaylistModel)
         .where(PlaylistModel.service == "soundcloud")
-        .where(PlaylistModel.platform_id.in_(items_id))
+        .where(PlaylistModel.platform_id.in_(items_id))  # type: ignore
     )
     search_result = orm.exec(search_query).fetchall()
 
@@ -128,7 +128,7 @@ async def sync_playlist_tracks(
     tracks_ids = {obj.platform_id for obj in res}
 
     tracks_statement = select(TrackModel).where(
-        or_(TrackModel.playlists.any(id=id), TrackModel.platform_id.in_(tracks_ids))
+        or_(TrackModel.playlists.any(id=id), TrackModel.platform_id.in_(tracks_ids))  # type: ignore
     )
     tracks = orm.exec(tracks_statement).fetchall()
 
