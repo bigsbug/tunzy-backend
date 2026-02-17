@@ -15,9 +15,9 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
-    service_name: str
+    service_name: str = "sync-me"
     logs_path: str = str(BASE_DIR / "logs")
-    http_proxy: str
+    http_proxy: str | None = None
     soundcloud_oauth: str
     concurrent_downloads: int = 4  # 4–16 depending on your bandwidth
     concurrent_fragment_downloads: int = 1  # 4–16 depending on your bandwidth
