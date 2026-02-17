@@ -10,6 +10,7 @@ from app.models.playlist import (
     TrackModel,
     TrackPublicModel,
 )
+from app.models.settings import SettingsModel
 from app.schemas.playlist import PlaylistSchema
 from app.soundcloud.auth import SoundCloudAuth, get_app_version, get_client_id
 from app.soundcloud.playlist import get_playlist, get_playlists, get_playlist_tracks
@@ -45,8 +46,12 @@ async def tracks(id: Annotated[int, Path(title="ID of playlist")], orm: SessionD
 
 @router.post("/sync/")
 async def sync_playlists(orm: SessionDep):
+
+    settings_query = select(SettingsModel)
+    settings = orm.exec(settings_query).one_or_none()
+    http_proxy = settings.http_proxy if settings else config.settings.http_proxy
     async with aiohttp.ClientSession(
-        proxy=config.settings.http_proxy,
+        proxy=http_proxy,
         headers=config.headers,
     ) as session:
         client_id = await get_client_id(session)
@@ -102,9 +107,12 @@ async def sync_playlist_tracks(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="This Playlist Is Offline"
         )
+    settings_query = select(SettingsModel)
+    settings = orm.exec(settings_query).one_or_none()
+    http_proxy = settings.http_proxy if settings else config.settings.http_proxy
 
     async with aiohttp.ClientSession(
-        proxy=config.settings.http_proxy,
+        proxy=http_proxy,
         headers=config.headers,
     ) as session:
         client_id = await get_client_id(session)
