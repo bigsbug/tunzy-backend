@@ -9,6 +9,7 @@ from app.models.settings import SettingsModel
 from app.services.playlist_service import router as playlist_router
 from app.services.settings_service import router as settings_router
 from app.services.download_service import router as downloads_router
+from app.services.player_service import router as player_router
 from app.core.db import create_db_and_tables, get_session
 from contextlib import asynccontextmanager
 
@@ -41,6 +42,7 @@ origins = [
 app.include_router(playlist_router)
 app.include_router(settings_router)
 app.include_router(downloads_router)
+app.include_router(player_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
