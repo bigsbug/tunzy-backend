@@ -69,7 +69,7 @@ async def play_track_head(track_id: int, orm: SessionDep):
     return Response(headers=headers, status_code=status.HTTP_200_OK)
 
 
-@router.get("/{track_id}/play")
+@router.get("/{track_id}/play", name="play-track")
 async def play_track(track_id: int, orm: SessionDep, request: Request):
     track_query = select(TrackModel).where(TrackModel.id == track_id)
     track_obj = orm.exec(track_query).one_or_none()
