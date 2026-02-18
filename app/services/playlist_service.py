@@ -4,6 +4,7 @@ from typing import Annotated
 from app.core import config
 from app.core.db import SessionDep
 from app.core.logging import get_logger
+from app.http.session import ClientSession
 from app.models.playlist import (
     PlaylistModel,
     PlaylistPublicModel,
@@ -49,11 +50,7 @@ async def sync_playlists(orm: SessionDep):
 
     settings_query = select(SettingsModel)
     settings = orm.exec(settings_query).one_or_none()
-    http_proxy = settings.http_proxy if settings else config.settings.http_proxy
-    async with aiohttp.ClientSession(
-        proxy=http_proxy,
-        headers=config.headers,
-    ) as session:
+    async with ClientSession(settings=settings) as session:
         client_id = await get_client_id(session)
         app_version = await get_app_version(session)
         sc_auth = SoundCloudAuth(client_id, app_version)
@@ -109,12 +106,7 @@ async def sync_playlist_tracks(
         )
     settings_query = select(SettingsModel)
     settings = orm.exec(settings_query).one_or_none()
-    http_proxy = settings.http_proxy if settings else config.settings.http_proxy
-
-    async with aiohttp.ClientSession(
-        proxy=http_proxy,
-        headers=config.headers,
-    ) as session:
+    async with ClientSession(settings=settings) as session:
         client_id = await get_client_id(session)
         app_version = await get_app_version(session)
         sc_auth = SoundCloudAuth(client_id, app_version)
