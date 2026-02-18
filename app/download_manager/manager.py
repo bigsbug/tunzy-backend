@@ -2,6 +2,7 @@ from asyncio import Queue, Condition
 import asyncio
 from dataclasses import dataclass
 import threading
+from types import CoroutineType
 
 from app.core.logging import get_logger
 from app.models.playlist import DownloadStatusEnum, DownloadTrackModel
@@ -81,7 +82,13 @@ class DownloadManager:
         finally:
             await self.semaphore.release()
 
-    async def add_to_queue(self, download_id, download_task, cancel_event, priority):
+    async def add_to_queue(
+        self,
+        download_id: int,
+        download_task: CoroutineType,
+        cancel_event: threading.Event,
+        priority: int,
+    ):
         await self.queue.put((download_id, download_task, cancel_event, priority))
 
     async def cancel_download(self, download_id):
