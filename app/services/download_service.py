@@ -165,10 +165,16 @@ async def download_playlist_progress_report(
         )
     tracks_ids_lookup = set([obj.id for obj in playlist_obj.tracks])
 
-    async def progress_generator():
+    async def progress_generator(tracks_ids_lookup):
         while True:
             if await request.is_disconnected():
                 break
+
+            # Refresh items when this api start sooner then sync tracks API
+            # if it be disabled it has a chance that don't show updated data
+            if not tracks_ids_lookup:
+                orm.refresh(playlist_obj)
+                tracks_ids_lookup = set([obj.id for obj in playlist_obj.tracks])
 
             await request.app.state.downloader.progress_event.wait()
             request.app.state.downloader.progress_event.clear()
@@ -183,7 +189,9 @@ async def download_playlist_progress_report(
             yield f"data: {data}\n\n"
             await sleep(0.5)
 
-    return StreamingResponse(progress_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        progress_generator(tracks_ids_lookup), media_type="text/event-stream"
+    )
 
 
 @router.post("/playlists/{id}/tracks")
