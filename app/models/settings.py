@@ -16,20 +16,18 @@ class SettingBaseModel(SQLModel):
 
     def get_http_headers(self) -> dict:
         headers = config.headers.copy()
-        headers["authorization"] = (
-            self.soundcloud_oauth or config.settings.soundcloud_oauth
-        )
+        headers["authorization"] = self.soundcloud_oauth or settings.soundcloud_oauth
         return headers
 
     def get_http_cookies(self) -> dict:
         cookies = config.cookies.copy()
         cookies["oauth_token"] = self.soundcloud_oauth.lstrip(
             "OAuth "
-        ) or config.settings.soundcloud_oauth.lstrip("OAuth ")
+        ) or settings.soundcloud_oauth.lstrip("OAuth ")
         return cookies
 
     def get_http_proxy(self) -> str | None:
-        http_proxy = settings.http_proxy if settings else config.settings.http_proxy
+        http_proxy = self.http_proxy or settings.http_proxy
         return http_proxy
 
 
