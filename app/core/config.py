@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     service_name: str = "sync-me"
     logs_path: str = str(BASE_DIR / "logs")
     http_proxy: str | None = None
-    soundcloud_oauth: str
+    soundcloud_oauth: str = ""  # can be set via API or load via .env
     concurrent_downloads: int = 4  # 4–16 depending on your bandwidth
     concurrent_fragment_downloads: int = 1  # 4–16 depending on your bandwidth
     download_folder: str = str(BASE_DIR / "musics")
