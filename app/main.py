@@ -5,6 +5,7 @@ from app.core.logging import setup_logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.download_manager.manager import DownloadManager
+from app.download_manager.utils import add_downloads_to_download_manager
 from app.models.settings import SettingsModel
 from app.services.playlist_service import router as playlist_router
 from app.services.settings_service import router as settings_router
@@ -28,6 +29,9 @@ async def lifespan(app: FastAPI):
     )
     app.state.downloader = DownloadManager(concurrent_downloads)
     asyncio.create_task(app.state.downloader.worker())
+    asyncio.create_task(
+        add_downloads_to_download_manager(session, app.state.downloader)
+    )
     yield
 
 
